@@ -61,7 +61,7 @@ class Postgresql(AutotoolsPackage):
         description="Line editing library",
     )
     variant("python", default=False, description="Enable Python bindings.")
-    variant("perl", default=False, description="Enable Perl bindings.")
+    variant("perl", default=True, description="Enable Perl bindings.", when="@17:")
     variant("tcl", default=False, description="Enable Tcl bindings.")
     variant("gssapi", default=False, description="Build with GSSAPI functionality.")
     variant("xml", default=False, description="Build with XML support.")
@@ -75,6 +75,8 @@ class Postgresql(AutotoolsPackage):
     depends_on("perl+opcode", when="+perl")
     depends_on("python", when="+python")
     depends_on("libxml2", when="+xml")
+    depends_on("flex", when="@17:")
+    depends_on("bison", when="@17:")
 
     @property
     def command(self):
