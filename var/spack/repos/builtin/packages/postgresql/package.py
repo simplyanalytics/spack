@@ -61,7 +61,7 @@ class Postgresql(AutotoolsPackage):
         description="Line editing library",
     )
     variant("python", default=False, description="Enable Python bindings.")
-    variant("perl", default=True, description="Enable Perl bindings.", when="@17:")
+    variant("perl", default=False, description="Enable Perl bindings.")
     variant("tcl", default=False, description="Enable Tcl bindings.")
     variant("gssapi", default=False, description="Build with GSSAPI functionality.")
     variant("xml", default=False, description="Build with XML support.")
