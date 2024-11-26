@@ -201,12 +201,12 @@ class Postgresql(AutotoolsPackage):
     @contextlib.contextmanager
     def postgresql(self):
         bin_dir = self.prefix.bin
-        pg_ctl = which(bin_dir.join("pg_ctl"))
+        pg_ctl = which(bin_dir.pg_ctl)
         with tempfile.TemporaryDirectory() as data_dir:
             pg_ctl("init", "-D", data_dir, "-o", "-A trust")
             pg_ctl("start", "-D", data_dir, "-o", f"-h '' -k {data_dir}")
             try:
-                psql = which(bin_dir.join("psql"))
+                psql = which(bin_dir.psql)
                 yield functools.partial(psql, "-h", data_dir)
             finally:
                 pg_ctl("stop", "-D", data_dir)
