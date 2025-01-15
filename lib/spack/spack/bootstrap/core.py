@@ -1,5 +1,4 @@
-# Copyright 2013-2024 Lawrence Livermore National Security, LLC and other
-# Spack Project Developers. See the top-level COPYRIGHT file for details.
+# Copyright Spack Project Developers. See COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 """Bootstrap Spack core dependencies from binaries.
@@ -35,9 +34,10 @@ from llnl.util import tty
 from llnl.util.lang import GroupedExceptionHandler
 
 import spack.binary_distribution
+import spack.concretize
 import spack.config
 import spack.detection
-import spack.mirror
+import spack.mirrors.mirror
 import spack.platforms
 import spack.spec
 import spack.store
@@ -91,7 +91,7 @@ class Bootstrapper:
         self.metadata_dir = spack.util.path.canonicalize_path(conf["metadata"])
 
         # Promote (relative) paths to file urls
-        self.url = spack.mirror.Mirror(conf["info"]["url"]).fetch_url
+        self.url = spack.mirrors.mirror.Mirror(conf["info"]["url"]).fetch_url
 
     @property
     def mirror_scope(self) -> spack.config.InternalConfigScope:
@@ -271,10 +271,10 @@ class SourceBootstrapper(Bootstrapper):
                 bootstrapper = ClingoBootstrapConcretizer(configuration=spack.config.CONFIG)
                 concrete_spec = bootstrapper.concretize()
             else:
-                concrete_spec = spack.spec.Spec(
+                abstract_spec = spack.spec.Spec(
                     abstract_spec_str + " ^" + spec_for_current_python()
                 )
-                concrete_spec.concretize()
+                concrete_spec = spack.concretize.concretize_one(abstract_spec)
 
         msg = "[BOOTSTRAP MODULE {0}] Try installing '{1}' from sources"
         tty.debug(msg.format(module, abstract_spec_str))
@@ -300,7 +300,7 @@ class SourceBootstrapper(Bootstrapper):
         # might reduce compilation time by a fair amount
         _add_externals_if_missing()
 
-        concrete_spec = spack.spec.Spec(abstract_spec_str).concretized()
+        concrete_spec = spack.concretize.concretize_one(abstract_spec_str)
         msg = "[BOOTSTRAP] Try installing '{0}' from sources"
         tty.debug(msg.format(abstract_spec_str))
         with spack.config.override(self.mirror_scope):
@@ -481,19 +481,6 @@ def ensure_gpg_in_path_or_raise() -> None:
     )
 
 
-def file_root_spec() -> str:
-    """Return the root spec used to bootstrap file"""
-    root_spec_name = "win-file" if IS_WINDOWS else "file"
-    return _root_spec(root_spec_name)
-
-
-def ensure_file_in_path_or_raise() -> None:
-    """Ensure file is in the PATH or raise"""
-    return ensure_executables_in_path_or_raise(
-        executables=["file"], abstract_spec=file_root_spec()
-    )
-
-
 def patchelf_root_spec() -> str:
     """Return the root spec used to bootstrap patchelf"""
     # 0.13.1 is the last version not to require C++17.
@@ -562,10 +549,9 @@ def ensure_winsdk_external_or_raise() -> None:
             missing_packages_lst.append("win-sdk")
         missing_packages = " & ".join(missing_packages_lst)
         raise RuntimeError(
-            f"Unable to find the {missing_packages}, please install these packages \
-via the Visual Studio installer \
-before proceeding with Spack or provide the path to a non standard install with \
-'spack external find --path'"
+            f"Unable to find the {missing_packages}, please install these packages via the Visual "
+            "Studio installer before proceeding with Spack or provide the path to a non standard "
+            "install with 'spack external find --path'"
         )
     # wgl/sdk are not required for bootstrapping Spack, but
     # are required for building anything non trivial
@@ -577,15 +563,13 @@ def ensure_core_dependencies() -> None:
     """Ensure the presence of all the core dependencies."""
     if sys.platform.lower() == "linux":
         ensure_patchelf_in_path_or_raise()
-    elif sys.platform == "win32":
-        ensure_file_in_path_or_raise()
     ensure_gpg_in_path_or_raise()
     ensure_clingo_importable_or_raise()
 
 
 def all_core_root_specs() -> List[str]:
     """Return a list of all the core root specs that may be used to bootstrap Spack"""
-    return [clingo_root_spec(), gnupg_root_spec(), patchelf_root_spec(), file_root_spec()]
+    return [clingo_root_spec(), gnupg_root_spec(), patchelf_root_spec()]
 
 
 def bootstrapping_sources(scope: Optional[str] = None):
